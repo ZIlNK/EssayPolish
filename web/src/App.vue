@@ -102,7 +102,10 @@ const underSwitchMode = async (mode) => {
         })
       })
       const data = await response.json()
-      appraiseData.value = data.assessment_result
+      appraiseData.value = {
+        total_score: data.total_score,
+        breakdown: data.breakdown
+      }
     } else if (currentModeState.value.isRewrite) {
       const response = await fetch('http://localhost:5000/api/polish', {
         method: 'POST',
@@ -116,7 +119,10 @@ const underSwitchMode = async (mode) => {
         })
       })
       const data = await response.json()
-      rewriteData.value = data.polished_content
+      rewriteData.value = {
+        polished_content: data.polished_content,
+        changes_made: data.changes_made
+      }
     }
   } catch (error) {
     console.error('Error:', error)
