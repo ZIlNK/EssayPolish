@@ -15,7 +15,7 @@ ocr = PaddleOCR(use_angle_cls=True, lang="ch", use_gpu=False)
 corrector = Corrector()
 
 class LLM:
-    url = "http://127.0.0.1:5000/v1/chat/completions"
+    url = "http://127.0.0.1:8000/v1/chat/completions"  # 假设LLM服务运行在8000端口
     mode = ""
     character = ""
     temperature = 0.0
@@ -43,7 +43,7 @@ class LLM:
                     "n_gpu_layers": 12
                 }
             }
-            response = requests.post("http://127.0.0.1:5000/v1/internal/model/load", headers=headers, json=data, verify=False)
+            response = requests.post("http://127.0.0.1:8000/v1/internal/model/load", headers=headers, json=data, verify=False)
 
     def changechar(self, character):
         self.mode = "chat-instruct"
@@ -57,25 +57,51 @@ class LLM:
             self.temperature = 0.5
 
     def process(self, user_message="continue"):
-        self.history.append({"role": "user", "content": user_message})
+        try:
+            self.history.append({"role": "user", "content": user_message})
 
-        headers = {
-            "Content-Type": "application/json"
-        }
-        data = {
-            "mode": self.mode,
-            "character": self.character,
-            "messages": self.history,
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature,
-            "top_p": self.top_p,
-            "seed": self.seed
-        }
+            headers = {
+                "Content-Type": "application/json"
+            }
+            data = {
+                "mode": self.mode,
+                "character": self.character,
+                "messages": self.history,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
+                "top_p": self.top_p,
+                "seed": self.seed
+            }
 
-        response = requests.post(self.url, headers=headers, json=data, verify=False)
-        assistant_message = response.json()['choices'][0]['message']['content']
-        self.history.append({"role": "assistant", "content": assistant_message})
-        return assistant_message
+            print(f"Sending request to LLM service: {self.url}")
+            print(f"Request data: {data}")
+            
+            response = requests.post(self.url, headers=headers, json=data, verify=False)
+            
+            # 检查响应状态码
+            if response.status_code != 200:
+                print(f"Error: Server returned status code {response.status_code}")
+                print(f"Response content: {response.text}")
+                return "模型处理失败，请稍后重试"
+
+            # 尝试解析JSON响应
+            try:
+                response_data = response.json()
+                if 'choices' in response_data and len(response_data['choices']) > 0:
+                    assistant_message = response_data['choices'][0]['message']['content']
+                    self.history.append({"role": "assistant", "content": assistant_message})
+                    return assistant_message
+                else:
+                    print("Error: Invalid response format")
+                    print(f"Response data: {response_data}")
+                    return "模型返回格式错误，请稍后重试"
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON: {e}")
+                print(f"Response content: {response.text}")
+                return "模型返回数据格式错误，请稍后重试"
+        except Exception as e:
+            print(f"Error in process: {str(e)}")
+            return "模型处理出错，请稍后重试"
 
     def sethistory(self, newhistory):
         self.history = newhistory

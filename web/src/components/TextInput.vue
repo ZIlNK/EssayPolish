@@ -143,11 +143,31 @@ const handlePolish = async () => {
   }
 
   try {
-    // TODO: 等待后端实现
-    ElMessage.info('润色功能正在开发中')
+    const response = await axios.post('http://localhost:5000/api/polish', {
+      content: inputText.value,
+      instruction: '使语言更正式',
+      method: 0
+    })
+    
+    if (response.data.error) {
+      ElMessage.error(response.data.error)
+      return
+    }
+    
+    if (response.data.polished_content) {
+      responseText.value = response.data.polished_content
+      emit('update:responseText', responseText.value)
+      ElMessage.success('文本润色成功')
+    } else {
+      ElMessage.error('文本润色失败：未获取到润色内容')
+    }
   } catch (error) {
     console.error('Error in polish:', error)
-    ElMessage.error('处理失败，请重试')
+    if (error.response) {
+      ElMessage.error(`处理失败：${error.response.data.error || '未知错误'}`)
+    } else {
+      ElMessage.error('处理失败，请检查网络连接')
+    }
   }
 }
 
@@ -168,11 +188,30 @@ const handleAssessment = async () => {
   }
 
   try {
-    // TODO: 等待后端实现
-    ElMessage.info('评价功能正在开发中')
+    const response = await axios.post('http://localhost:5000/api/assessment', {
+      content: inputText.value,
+      method: 0
+    })
+    
+    if (response.data.error) {
+      ElMessage.error(response.data.error)
+      return
+    }
+    
+    if (response.data.total_score) {
+      responseText.value = `总分：${response.data.total_score}\n语法：${response.data.breakdown.grammar}\n结构：${response.data.breakdown.structure}\n内容：${response.data.breakdown.content}`
+      emit('update:responseText', responseText.value)
+      ElMessage.success('文本评价成功')
+    } else {
+      ElMessage.error('文本评价失败：未获取到评分结果')
+    }
   } catch (error) {
     console.error('Error in assessment:', error)
-    ElMessage.error('处理失败，请重试')
+    if (error.response) {
+      ElMessage.error(`处理失败：${error.response.data.error || '未知错误'}`)
+    } else {
+      ElMessage.error('处理失败，请检查网络连接')
+    }
   }
 }
 
